@@ -57,20 +57,20 @@ def is_click(lm):
     return dist(lm[8], lm[12]) < 0.05
 
 def is_hand_open(lm):
-    thumb_open = lm[4].x < lm[3].x if lm[4].x < lm[0].x else lm[4].x > lm[3].x  # Thumb
+    thumb_open = lm[4].x < lm[3].x if lm[4].x < lm[0].x else lm[4].x > lm[3].x 
     index_open = lm[8].y < lm[6].y   
-    middle_open = lm[12].y < lm[10].y  # Middle
-    ring_open = lm[16].y < lm[14].y    # Ring
-    pinky_open = lm[20].y < lm[18].y   # Pinky
+    middle_open = lm[12].y < lm[10].y 
+    ring_open = lm[16].y < lm[14].y    
+    pinky_open = lm[20].y < lm[18].y   
     
     return thumb_open and index_open and middle_open and ring_open and pinky_open
 
 def is_hand_closed(lm):
-    thumb_closed = lm[4].x > lm[3].x if lm[4].x < lm[0].x else lm[4].x < lm[3].x  # Thumb
-    index_closed = lm[8].y > lm[6].y    # Index
-    middle_closed = lm[12].y > lm[10].y  # Middle
-    ring_closed = lm[16].y > lm[14].y    # Ring
-    pinky_closed = lm[20].y > lm[18].y   # Pinky
+    thumb_closed = lm[4].x > lm[3].x if lm[4].x < lm[0].x else lm[4].x < lm[3].x 
+    index_closed = lm[8].y > lm[6].y    
+    middle_closed = lm[12].y > lm[10].y  
+    ring_closed = lm[16].y > lm[14].y    
+    pinky_closed = lm[20].y > lm[18].y   
     
     return thumb_closed and index_closed and middle_closed and ring_closed and pinky_closed
 
