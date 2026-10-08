@@ -4,6 +4,7 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import urllib.request
 import os
+import time
 import pyautogui
 import math
 from pycaw.pycaw import AudioUtilities
@@ -57,21 +58,21 @@ def is_click(lm):
     return dist(lm[8], lm[12]) < 0.05
 
 def is_hand_open(lm):
-    thumb_open = lm[4].x < lm[3].x if lm[4].x < lm[0].x else lm[4].x > lm[3].x 
-    index_open = lm[8].y < lm[6].y   
-    middle_open = lm[12].y < lm[10].y 
-    ring_open = lm[16].y < lm[14].y    
-    pinky_open = lm[20].y < lm[18].y   
-    
+    thumb_open = lm[4].x < lm[3].x if lm[4].x < lm[0].x else lm[4].x > lm[3].x
+    index_open = lm[8].y < lm[6].y
+    middle_open = lm[12].y < lm[10].y
+    ring_open = lm[16].y < lm[14].y
+    pinky_open = lm[20].y < lm[18].y
+
     return thumb_open and index_open and middle_open and ring_open and pinky_open
 
 def is_hand_closed(lm):
-    thumb_closed = lm[4].x > lm[3].x if lm[4].x < lm[0].x else lm[4].x < lm[3].x 
-    index_closed = lm[8].y > lm[6].y    
-    middle_closed = lm[12].y > lm[10].y  
-    ring_closed = lm[16].y > lm[14].y    
-    pinky_closed = lm[20].y > lm[18].y   
-    
+    thumb_closed = lm[4].x > lm[3].x if lm[4].x < lm[0].x else lm[4].x < lm[3].x
+    index_closed = lm[8].y > lm[6].y
+    middle_closed = lm[12].y > lm[10].y
+    ring_closed = lm[16].y > lm[14].y
+    pinky_closed = lm[20].y > lm[18].y
+
     return thumb_closed and index_closed and middle_closed and ring_closed and pinky_closed
 
 def volume_value(lm):
@@ -84,6 +85,15 @@ smooth = 0.5
 was_click = False
 current_vol = 0.0
 show_volume_bar = False
+
+# --- FPS measurement ---
+prev_time = time.time()
+frame_count = 0
+fps_sum = 0.0
+fps = 0.0
+min_fps = float("inf")
+max_fps = 0.0
+WARMUP_FRAMES = 30   # ignore the first frames (camera and model warm-up)
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -99,13 +109,11 @@ while cap.isOpened():
         lm = res.hand_landmarks[0]
         draw_landmarks(frame, lm)
 
-     
         if is_hand_open(lm):
             show_volume_bar = True
         elif is_hand_closed(lm):
             show_volume_bar = False
 
- 
         idx = lm[8]
         x = int(idx.x * screen_width)
         y = int(idx.y * screen_height)
@@ -114,20 +122,17 @@ while cap.isOpened():
         sy = sy * (1 - smooth) + y * smooth
         pyautogui.moveTo(sx, sy)
 
-     
         c = is_click(lm)
         if c and not was_click:
             pyautogui.click()
             cv2.putText(frame, "CLICK", (40, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3)
         was_click = c
 
-      
         if show_volume_bar:
             current_vol = volume_value(lm)
             level = vol_min + current_vol * (vol_max - vol_min)
             volume.SetMasterVolumeLevel(level, None)
             cv2.putText(frame, "VOLUME", (40, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 3)
-
 
     if show_volume_bar:
         bar_x, bar_y = 30, 150
@@ -141,6 +146,21 @@ while cap.isOpened():
         cv2.putText(frame, f"{int(current_vol*100)}%", (20, bar_y + bar_h + 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
 
+    # --- FPS calculation (placed at the end of the loop, right before display) ---
+    now = time.time()
+    elapsed = now - prev_time
+    prev_time = now
+    if elapsed > 0:
+        fps = 1.0 / elapsed
+        frame_count += 1
+        if frame_count > WARMUP_FRAMES:
+            fps_sum += fps
+            min_fps = min(min_fps, fps)
+            max_fps = max(max_fps, fps)
+
+    cv2.putText(frame, f"FPS: {int(fps)}", (frame.shape[1] - 150, 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+
     cv2.imshow("Hand Gesture Mouse Control", frame)
     if cv2.waitKey(1) & 0xFF == 27:
         break
@@ -148,3 +168,12 @@ while cap.isOpened():
 cap.release()
 cv2.destroyAllWindows()
 detector.close()
+
+# --- FPS report ---
+measured = frame_count - WARMUP_FRAMES
+if measured > 0:
+    print(f"Frames measured : {measured}")
+    print(f"Average FPS     : {fps_sum / measured:.1f}")
+    print(f"Min / Max FPS   : {min_fps:.1f} / {max_fps:.1f}")
+else:
+    print("Run the program a bit longer to get an FPS measurement.")
